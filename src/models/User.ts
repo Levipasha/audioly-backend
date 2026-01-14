@@ -14,6 +14,8 @@ export interface IUser extends Document {
   uploadedSongs: Types.ObjectId[];
   friends: Types.ObjectId[];
   friendRequests: Types.ObjectId[];
+  listenTogetherRequests: Types.ObjectId[]; // Incoming listen together requests
+  activeListenSession?: Types.ObjectId; // Current active session (if any)
 }
 
 const userSchema = new Schema<IUser>(
@@ -31,6 +33,8 @@ const userSchema = new Schema<IUser>(
     uploadedSongs: [{ type: Types.ObjectId, ref: 'Song' }],
     friends: [{ type: Types.ObjectId, ref: 'User' }],
     friendRequests: [{ type: Types.ObjectId, ref: 'User' }],
+    listenTogetherRequests: [{ type: Types.ObjectId, ref: 'ListenTogetherRequest' }],
+    activeListenSession: { type: Types.ObjectId, ref: 'ListenSession' },
   },
   { timestamps: true }
 );

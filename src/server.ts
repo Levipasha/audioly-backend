@@ -9,6 +9,8 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import songRoutes from './routes/songs';
 import resolverRoutes from './routes/resolver';
+import listenTogetherRoutes from './routes/listen-together';
+import listenSessionRoutes from './routes/listen-sessions';
 
 async function bootstrap() {
   try {
@@ -29,9 +31,9 @@ async function bootstrap() {
   app.use(cors());
   app.use(helmet());
   app.use(morgan('dev'));
-  // Increase body size limit to 50MB for file uploads
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  // Increase body size limit to 100MB for file uploads
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
@@ -42,6 +44,8 @@ async function bootstrap() {
   app.use('/users', userRoutes);
   app.use('/songs', songRoutes);
   app.use('/', resolverRoutes);
+  app.use('/listen-together', listenTogetherRoutes);
+  app.use('/listen-sessions', listenSessionRoutes);
 
   app.listen(env.port, '0.0.0.0', () => {
     // eslint-disable-next-line no-console

@@ -6,7 +6,16 @@ import { User } from '../models/User';
 import cloudinary from '../config/cloudinary';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+// Configure multer with increased file size limits for audio uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB max file size
+    fieldSize: 100 * 1024 * 1024, // 100MB max field size
+    files: 2, // Max 2 files (audio + cover)
+  },
+});
 
 const deriveTitleFromFilename = (filename: string | undefined) => {
   const raw = (filename ?? '').trim();
