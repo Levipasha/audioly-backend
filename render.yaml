@@ -1,0 +1,7 @@
+# Render Blueprint: build must compile TypeScript so dist/server.js exists
+services:
+  - type: web
+    name: audioly-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.js
