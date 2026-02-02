@@ -4,4 +4,5 @@ services:
     name: audioly-backend
     env: node
     buildCommand: npm install && npm run build
-    startCommand: node dist/server.js
+    # Run from repo root so dist/server.js is found (works if Render's Root Directory is empty or set to backend)
+    startCommand: sh -c 'if [ -f dist/server.js ]; then node dist/server.js; else cd .. && node dist/server.js; fi'
