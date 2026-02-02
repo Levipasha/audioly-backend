@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { UploadApiResponse } from 'cloudinary';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { Song } from '../models/Song';
 import { User } from '../models/User';
@@ -23,6 +24,26 @@ const deriveTitleFromFilename = (filename: string | undefined) => {
   const cleaned = withoutExt.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
   return cleaned || 'Untitled';
 };
+
+// Helper function to upload files to Cloudinary
+const uploadToCloudinary = async (
+  file: Express.Multer.File,
+  folder: string,
+  resourceType: 'image' | 'video' | 'auto'
+): Promise<{ url: string; public_id: string }> =>
+  new Promise<{ url: string; public_id: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: resourceType,
+      },
+      (error?: Error, result?: UploadApiResponse) => {
+        if (error || !result) return reject(error || new Error('Upload failed'));
+        resolve({ url: result.secure_url, public_id: result.public_id });
+      }
+    );
+    stream.end(file.buffer);
+  });
 
 // Upload audio (and optional cover) to Cloudinary and create Song
 router.post(
@@ -53,29 +74,6 @@ router.post(
 
       const coverFile = files?.cover?.[0];
 
-      const uploadToCloudinary = async (
-        file: Express.Multer.File,
-        folder: string,
-        resourceType: 'image' | 'video' | 'auto'
-      ) =>
-        new Promise<{
-          url: string;
-          public_id: string;
-        }>((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            {
-              folder,
-              resource_type: resourceType,
-            },
-            (error, result) => {
-              if (error || !result) return reject(error);
-              resolve({ url: result.secure_url, public_id: result.public_id });
-            }
-          );
-
-          stream.end(file.buffer);
-        });
-
       const owner = await User.findById(req.userId);
 
       const [audioUpload, coverUpload] = await Promise.all([
@@ -100,9 +98,9 @@ router.post(
       });
 
       return res.status(201).json(song);
-    } catch (e) {
+    } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(e);
+      console.error(error);
       return res.status(500).json({ message: 'Internal server error' });
     }
   }
@@ -171,28 +169,6 @@ router.put(
 
       // If new cover is uploaded, replace old one
       if (coverFile) {
-        const uploadToCloudinary = async (
-          file: Express.Multer.File,
-          folder: string,
-          resourceType: 'image' | 'video' | 'auto'
-        ) =>
-          new Promise<{
-            url: string;
-            public_id: string;
-          }>((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              {
-                folder,
-                resource_type: resourceType,
-              },
-              (error, result) => {
-                if (error || !result) return reject(error);
-                resolve({ url: result.secure_url, public_id: result.public_id });
-              }
-            );
-            stream.end(file.buffer);
-          });
-
         // Delete old cover from Cloudinary if exists
         if (song.coverPublicId) {
           try {
@@ -208,7 +184,13 @@ router.put(
       }
 
       // Update song
-      const updateData: any = {};
+      const updateData: Partial<{
+        title: string;
+        category: string;
+        isPublic: boolean;
+        coverUrl: string | undefined;
+        coverPublicId: string | undefined;
+      }> = {};
       if (title !== undefined) updateData.title = title;
       if (category !== undefined) updateData.category = category;
       if (isPublic !== undefined) {
@@ -219,9 +201,9 @@ router.put(
 
       const updatedSong = await Song.findByIdAndUpdate(id, updateData, { new: true });
       return res.json(updatedSong);
-    } catch (e) {
+    } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(e);
+      console.error(error);
       return res.status(500).json({ message: 'Internal server error' });
     }
   }
@@ -240,9 +222,9 @@ router.post('/:id/play', async (req, res) => {
       return res.status(404).json({ message: 'Song not found' });
     }
     return res.json({ playCount: song.playCount });
-  } catch (e) {
+  } catch (error) {
     // eslint-disable-next-line no-console
-    console.error(e);
+    console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -285,9 +267,9 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res) => {
     await Song.findByIdAndDelete(id);
 
     return res.json({ message: 'Song deleted successfully' });
-  } catch (e) {
+  } catch (error) {
     // eslint-disable-next-line no-console
-    console.error(e);
+    console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });

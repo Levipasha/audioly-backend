@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt, { Secret } from 'jsonwebtoken';
+import { env } from '../config/env';
 import { User } from '../models/User';
 import { signAccessToken, signRefreshToken } from '../middleware/auth';
 
@@ -102,6 +104,35 @@ router.post('/login', async (req, res) => {
     // eslint-disable-next-line no-console
     console.error(e);
     return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Refresh access token using refresh token (so user stays logged in)
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body as { refreshToken?: string };
+    if (!refreshToken || !env.refreshJwtSecret) {
+      return res.status(400).json({ message: 'Refresh token required' });
+    }
+
+    const payload = jwt.verify(refreshToken, env.refreshJwtSecret as Secret) as { sub: string };
+    const user = await User.findById(payload.sub).select('name email username');
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    const newAccessToken = signAccessToken(user.id);
+    return res.json({
+      accessToken: newAccessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        username: user.username,
+      },
+    });
+  } catch {
+    return res.status(401).json({ message: 'Invalid or expired refresh token' });
   }
 });
 
